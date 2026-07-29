@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Fazendinha</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            900: '#14532d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-card {
+            backdrop-filter: blur(8px);
+            background: rgba(255, 255, 255, 0.8);
+        }
+        .dark .glass-card {
+            background: rgba(30, 41, 59, 0.8);
+        }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200">
+
+    <!-- Top Navigation -->
+    <nav class="sticky top-0 z-50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center text-white text-xl shadow-lg shadow-brand-500/30">
+                    <i class="fa-solid fa-leaf"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-none">Fazendinha</h1>
+                    <span class="text-xs text-slate-500 dark:text-slate-400">Estufa Agrícola Automatizada</span>
+                </div>
+            </div>
+
+            <!-- Status Indicator & Controls -->
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-full text-xs font-semibold">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                    <span>ESP32 Online</span>
+                </div>
+
+                <button id="themeToggle" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                    <i class="fa-solid fa-moon dark:hidden"></i>
+                    <i class="fa-solid fa-sun hidden dark:block"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto p-6 space-y-6">
+
+        <!-- Top Alert / System Status -->
+        <div class="p-4 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-circle-check text-brand-500 text-xl"></i>
+                <div>
+                    <h3 class="font-semibold text-sm">Ambiente Estável</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Todas as métricas do microclima estão dentro dos limites configurados.</p>
+                </div>
+            </div>
+            <div class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                <i class="fa-regular fa-clock"></i>
+                <span>Última atualização: <strong id="lastUpdate">Agora mesmo</strong></span>
+            </div>
+        </div>
+
+        <!-- Real-Time Metrics Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <!-- Temperatura -->
+            <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Temperatura</p>
+                        <h2 class="text-3xl font-bold mt-1" id="tempValue">26.5 <span class="text-lg font-normal text-slate-500">°C</span></h2>
+                    </div>
+                    <div class="p-3 bg-orange-500/10 text-orange-500 rounded-xl">
+                        <i class="fa-solid fa-temperature-half text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center gap-2 text-xs text-slate-500">
+                    <span class="text-emerald-500 font-semibold"><i class="fa-solid fa-shield"></i> Limite: 30°C</span>
+                    <span>• DHT22</span>
+                </div>
+            </div>
+
+            <!-- Umidade do Ar -->
+            <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Umidade do Ar</p>
+                        <h2 class="text-3xl font-bold mt-1" id="humidityValue">68 <span class="text-lg font-normal text-slate-500">%</span></h2>
+                    </div>
+                    <div class="p-3 bg-blue-500/10 text-blue-500 rounded-xl">
+                        <i class="fa-solid fa-droplet text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center gap-2 text-xs text-slate-500">
+                    <span class="text-blue-500 font-semibold">Ideal (60-80%)</span>
+                    <span>• DHT22</span>
+                </div>
+            </div>
+
+            <!-- Luminosidade -->
+            <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Luminosidade</p>
+                        <h2 class="text-3xl font-bold mt-1" id="luxValue">840 <span class="text-lg font-normal text-slate-500">Lux</span></h2>
+                    </div>
+                    <div class="p-3 bg-amber-500/10 text-amber-500 rounded-xl">
+                        <i class="fa-solid fa-sun text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center gap-2 text-xs text-slate-500">
+                    <span class="text-amber-500 font-semibold">Dia Claro</span>
+                    <span>• Sensor LDR</span>
+                </div>
+            </div>
+
+            <!-- Nível do Reservatório -->
+            <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Reservatório</p>
+                        <h2 class="text-3xl font-bold mt-1" id="waterValue">75 <span class="text-lg font-normal text-slate-500">%</span></h2>
+                    </div>
+                    <div class="p-3 bg-cyan-500/10 text-cyan-500 rounded-xl">
+                        <i class="fa-solid fa-water text-xl"></i>
+                    </div>
+                </div>
+                <!-- Barra de progresso visual -->
+                <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full mt-4 overflow-hidden">
+                    <div id="waterBar" class="bg-cyan-500 h-full rounded-full" style="width: 75%"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Main Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Gráfico de Temperatura e Umidade -->
+            <div class="lg:col-span-2 glass-card p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-slate-700 dark:text-slate-200">Histórico de Temperatura e Umidade</h3>
+                    <span class="text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">Tempo Real</span>
+                </div>
+                <div class="h-72">
+                    <canvas id="tempHumidityChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Controles do Sistema & Atuadores -->
+            <div class="glass-card p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+                <div>
+                    <h3 class="font-bold text-slate-700 dark:text-slate-200 mb-1">Controle de Atuadores</h3>
+                    <p class="text-xs text-slate-500 mb-6">Modo Manual / Status do Sistema</p>
+
+                    <div class="space-y-4">
+                        <!-- Card Irrigação -->
+                        <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div id="pumpIcon" class="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400">
+                                    <i class="fa-solid fa-faucet-drip"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold">Bomba de Irrigação</p>
+                                    <span id="pumpStatus" class="text-xs text-slate-400">Desativado (Auto)</span>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="pumpToggle" class="sr-only peer" onchange="toggleActuator('bomba', this.checked)">
+                                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-500"></div>
+                            </label>
+                        </div>
+
+                        <!-- Card Exaustão -->
+                        <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div id="fanIcon" class="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400">
+                                    <i class="fa-solid fa-fan"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold">Exaustão / Cooler</p>
+                                    <span id="fanStatus" class="text-xs text-slate-400">Desativado (Auto)</span>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="fanToggle" class="sr-only peer" onchange="toggleActuator('cooler', this.checked)">
+                                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-500"></div>
+                            </label>
+                        </div>
+
+                        <!-- Card Iluminação UV -->
+                        <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div id="lightIcon" class="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400">
+                                    <i class="fa-solid fa-lightbulb"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold">Iluminação Grow Light</p>
+                                    <span id="lightStatus" class="text-xs text-slate-400">Desativado (Auto)</span>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="lightToggle" class="sr-only peer" onchange="toggleActuator('luz', this.checked)">
+                                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-500"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-slate-200 dark:border-slate-800">
+                    <button class="w-full py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        Parada de Emergência
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-12 border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-500">
+        <p>Projeto Estufa Automatizada IoT — SENAI PR | Desenvolvido para ESP32</p>
+    </footer>
+
+    <!-- Logic Script -->
+    <script>
+        // Theme Toggle Logic
+        const themeToggleBtn = document.getElementById('themeToggle');
+        themeToggleBtn.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+        });
+
+        // Initialize Chart
+        const ctx = document.getElementById('tempHumidityChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['10:00', '10:05', '10:10', '10:15', '10:20', '10:25'],
+                datasets: [
+                    {
+                        label: 'Temperatura (°C)',
+                        data: [24.2, 24.8, 25.1, 25.8, 26.1, 26.5],
+                        borderColor: '#f97316',
+                        backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Umidade (%)',
+                        data: [72, 70, 69, 68, 67, 68],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        grid: {
+                            color: 'rgba(156, 163, 175, 0.1)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(156, 163, 175, 0.1)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Simulador de recebimento de dados em tempo real (Simula a ESP32 enviando telemetria)
+        setInterval(() => {
+            // Atualizar valores aleatórios suaves para demonstração
+            const currentTemp = (25 + Math.random() * 3).toFixed(1);
+            const currentHum = Math.floor(65 + Math.random() * 8);
+            const currentLux = Math.floor(800 + Math.random() * 80);
+            
+            document.getElementById('tempValue').innerHTML = `${currentTemp} <span class="text-lg font-normal text-slate-500">°C</span>`;
+            document.getElementById('humidityValue').innerHTML = `${currentHum} <span class="text-lg font-normal text-slate-500">%</span>`;
+            document.getElementById('luxValue').innerHTML = `${currentLux} <span class="text-lg font-normal text-slate-500">Lux</span>`;
+            
+            // Atualizar horário da última leitura
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('lastUpdate').innerText = timeStr;
+
+            // Adicionar ao Gráfico
+            if (chart.data.labels.length > 8) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+                chart.data.datasets[1].data.shift();
+            }
+            chart.data.labels.push(now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+            chart.data.datasets[0].data.push(currentTemp);
+            chart.data.datasets[1].data.push(currentHum);
+            chart.chart.update();
+
+        }, 5000);
+
+        // Função de acionamento manual de atuadores
+        function toggleActuator(type, state) {
+            console.log(`Enviando comando para ESP32: ${type} -> ${state ? 'LIGADO' : 'DESLIGADO'}`);
+            
+            // Alterar o visual dos cards de acordo com o status
+            if(type === 'bomba') {
+                const icon = document.getElementById('pumpIcon');
+                const status = document.getElementById('pumpStatus');
+                if(state) {
+                    icon.className = 'p-2.5 rounded-lg bg-blue-500 text-white';
+                    status.innerText = 'Ativado Manualmente';
+                } else {
+                    icon.className = 'p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400';
+                    status.innerText = 'Desativado (Auto)';
+                }
+            }
+            
+            if(type === 'cooler') {
+                const icon = document.getElementById('fanIcon');
+                const status = document.getElementById('fanStatus');
+                if(state) {
+                    icon.className = 'p-2.5 rounded-lg bg-orange-500 text-white animate-spin';
+                    status.innerText = 'Ativado Manualmente';
+                } else {
+                    icon.className = 'p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400';
+                    status.innerText = 'Desativado (Auto)';
+                }
+            }
+
+            if(type === 'luz') {
+                const icon = document.getElementById('lightIcon');
+                const status = document.getElementById('lightStatus');
+                if(state) {
+                    icon.className = 'p-2.5 rounded-lg bg-amber-500 text-white';
+                    status.innerText = 'Ativado Manualmente';
+                } else {
+                    icon.className = 'p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400';
+                    status.innerText = 'Desativado (Auto)';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
