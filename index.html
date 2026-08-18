@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Fazendinha</title>
+    <title>Dashboard - Estufa Automatizada</title>
+    <!-- TailWind CSS & Chart.js via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -24,8 +25,8 @@
         }
     </script>
     <style>
-        .glass-card { backdrop-filter: blur(8px); background: rgba(255, 255, 255, 0.8); }
-        .dark .glass-card { background: rgba(30, 41, 59, 0.8); }
+        .glass-card { backdrop-filter: blur(8px); background: rgba(255, 255, 255, 0.85); }
+        .dark .glass-card { background: rgba(30, 41, 59, 0.85); }
     </style>
 </head>
 <body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200">
@@ -44,8 +45,8 @@
 
             <div class="flex items-center gap-4">
                 <div id="connectionStatus" class="flex items-center gap-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-full text-xs font-semibold">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                    <span id="statusText">ESP32 Online</span>
+                    <span id="pingDot" class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                    <span id="statusText">Conectando...</span>
                 </div>
 
                 <button id="themeToggle" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
@@ -62,8 +63,8 @@
             <div class="flex items-center gap-3">
                 <i class="fa-solid fa-circle-check text-brand-500 text-xl"></i>
                 <div>
-                    <h3 class="font-semibold text-sm">Ambiente Conectado</h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Exibindo leituras em tempo real dos sensores do ESP32-S3.</p>
+                    <h3 class="font-semibold text-sm">Status do Sistema</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Conexão direta HTTP/JSON com o microcontrolador ESP32-S3.</p>
                 </div>
             </div>
             <div class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
@@ -75,57 +76,55 @@
         <!-- Cards dos Sensores -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
-            <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+            <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                 <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Temperatura</p>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Temperatura</p>
                         <h2 class="text-3xl font-bold mt-1" id="tempValue">-- <span class="text-lg font-normal text-slate-500">°C</span></h2>
                     </div>
                     <div class="p-3 bg-orange-500/10 text-orange-500 rounded-xl">
                         <i class="fa-solid fa-temperature-half text-xl"></i>
                     </div>
                 </div>
-                <div class="mt-4 flex items-center gap-2 text-xs text-slate-500">
-                    <span class="text-emerald-500 font-semibold">Limite: 30°C</span>
-                    <span>• DHT11</span>
+                <div class="mt-4 text-xs text-slate-500">
+                    <span class="text-emerald-500 font-semibold">Limite: 30°C</span> • Sensor DHT
                 </div>
             </div>
 
-            <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+            <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                 <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Umidade Ar</p>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Umidade Ar</p>
                         <h2 class="text-3xl font-bold mt-1" id="humidityValue">-- <span class="text-lg font-normal text-slate-500">%</span></h2>
                     </div>
                     <div class="p-3 bg-blue-500/10 text-blue-500 rounded-xl">
                         <i class="fa-solid fa-droplet text-xl"></i>
                     </div>
                 </div>
-                <div class="mt-4 flex items-center gap-2 text-xs text-slate-500">
-                    <span class="text-blue-500 font-semibold">Ideal (60-80%)</span>
-                    <span>• DHT11</span>
+                <div class="mt-4 text-xs text-slate-500">
+                    <span class="text-blue-500 font-semibold">Ideal (60-80%)</span> • Sensor DHT
                 </div>
             </div>
 
-            <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+            <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                 <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Luminosidade</p>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Luminosidade</p>
                         <h2 class="text-3xl font-bold mt-1" id="luxValue">-- <span class="text-lg font-normal text-slate-500">%</span></h2>
                     </div>
                     <div class="p-3 bg-amber-500/10 text-amber-500 rounded-xl">
                         <i class="fa-solid fa-sun text-xl"></i>
                     </div>
                 </div>
-                <div class="mt-4 flex items-center gap-2 text-xs text-slate-500">
-                    <span class="text-amber-500 font-semibold">Sensor LDR</span>
+                <div class="mt-4 text-xs text-slate-500">
+                    <span class="text-amber-500 font-semibold">Luminosidade</span> • Sensor LDR
                 </div>
             </div>
 
-            <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+            <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                 <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Umidade Solo</p>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Umidade Solo</p>
                         <h2 class="text-3xl font-bold mt-1" id="soilValue">-- <span class="text-lg font-normal text-slate-500">%</span></h2>
                     </div>
                     <div class="p-3 bg-cyan-500/10 text-cyan-500 rounded-xl">
@@ -153,7 +152,7 @@
             <div class="glass-card p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                 <div>
                     <h3 class="font-bold text-slate-700 dark:text-slate-200 mb-1">Controle de Atuadores</h3>
-                    <p class="text-xs text-slate-500 mb-6">Controle manual em tempo real do ESP32</p>
+                    <p class="text-xs text-slate-500 mb-6">Comando dos pinos em tempo real</p>
 
                     <div class="space-y-4">
                         <!-- Bomba -->
@@ -180,7 +179,7 @@
                                     <i class="fa-solid fa-fan"></i>
                                 </div>
                                 <div>
-                                    <p class="text-sm font-semibold">Exaustão / Cooler</p>
+                                    <p class="text-sm font-semibold">Cooler Exaustão</p>
                                     <span id="fanStatus" class="text-xs text-slate-400">Desativado</span>
                                 </div>
                             </div>
@@ -197,7 +196,7 @@
                                     <i class="fa-solid fa-lightbulb"></i>
                                 </div>
                                 <div>
-                                    <p class="text-sm font-semibold">Iluminação Grow Light</p>
+                                    <p class="text-sm font-semibold">Iluminação Grow</p>
                                     <span id="lightStatus" class="text-xs text-slate-400">Desativado</span>
                                 </div>
                             </div>
@@ -214,8 +213,8 @@
     </main>
 
     <script>
-        // COLOQUE O IP DO SEU ESP32-S3 AQUI
-        const ESP32_IP = "192.168.1.50"; 
+        // ATENÇÃO: COLOQUE O IP DO SEU ESP32 AQUI (COM HTTP://)
+        const ESP32_IP = "http://192.168.1.15"; 
 
         document.getElementById('themeToggle').addEventListener('click', () => {
             document.documentElement.classList.toggle('dark');
@@ -235,30 +234,34 @@
         });
 
         function fetchESP32Data() {
-            fetch(`http://${ESP32_IP}/data`)
-                .then(response => response.json())
+            fetch(`${ESP32_IP}/data`)
+                .then(response => {
+                    if (!response.ok) throw new Error("Falha na resposta do servidor");
+                    return response.json();
+                })
                 .then(data => {
-                    // Atualiza Status Conexão
+                    // Atualiza Conexão
                     document.getElementById('statusText').innerText = "ESP32 Online";
-                    
-                    // Atualiza Sensores no HTML
+                    document.getElementById('pingDot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-ping";
+
+                    // Atualiza HTML
                     document.getElementById('tempValue').innerHTML = `${data.temp.toFixed(1)} <span class="text-lg font-normal text-slate-500">°C</span>`;
                     document.getElementById('humidityValue').innerHTML = `${data.umidade.toFixed(0)} <span class="text-lg font-normal text-slate-500">%</span>`;
                     document.getElementById('luxValue').innerHTML = `${data.luz} <span class="text-lg font-normal text-slate-500">%</span>`;
                     document.getElementById('soilValue').innerHTML = `${data.soloPct} <span class="text-lg font-normal text-slate-500">%</span>`;
                     document.getElementById('soilBar').style.width = `${data.soloPct}%`;
 
-                    // Atualiza Estado da Bomba
+                    // Estado Bomba
                     document.getElementById('pumpToggle').checked = data.bombaState;
                     document.getElementById('pumpStatus').innerText = data.bombaState ? 'Ativado' : 'Desativado';
                     document.getElementById('pumpIcon').className = data.bombaState ? 'p-2.5 rounded-lg bg-blue-500 text-white' : 'p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400';
 
-                    // Atualiza Estado do Cooler
+                    // Estado Cooler
                     document.getElementById('fanToggle').checked = data.coolerState;
                     document.getElementById('fanStatus').innerText = data.coolerState ? 'Ativado' : 'Desativado';
                     document.getElementById('fanIcon').className = data.coolerState ? 'p-2.5 rounded-lg bg-orange-500 text-white animate-spin' : 'p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400';
 
-                    // Atualiza Estado da Luz
+                    // Estado Luz
                     document.getElementById('lightToggle').checked = data.luzState;
                     document.getElementById('lightStatus').innerText = data.luzState ? 'Ativado' : 'Desativado';
                     document.getElementById('lightIcon').className = data.luzState ? 'p-2.5 rounded-lg bg-amber-500 text-white' : 'p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400';
@@ -279,13 +282,13 @@
                     chart.update();
                 })
                 .catch(err => {
-                    document.getElementById('statusText').innerText = "ESP32 Offline";
-                    console.error("Erro ao ler ESP32:", err);
+                    document.getElementById('statusText').innerText = "ESP32 Desconectado";
+                    document.getElementById('pingDot').className = "w-2 h-2 rounded-full bg-red-500";
                 });
         }
 
         function toggleActuator(type, state) {
-            fetch(`http://${ESP32_IP}/toggle?type=${type}&state=${state ? 1 : 0}`);
+            fetch(`${ESP32_IP}/toggle?type=${type}&state=${state ? 1 : 0}`);
         }
 
         setInterval(fetchESP32Data, 2000);
