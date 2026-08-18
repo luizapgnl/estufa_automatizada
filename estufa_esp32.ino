@@ -2,6 +2,16 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <DHT.h>
+#include <WiFi.h>
+#include <WebServer.h>
+
+// ==========================================
+// CONFIGURAÇÕES DE REDE (WI-FI)
+// ==========================================
+const char* ssid = "NOME_DA_SUA_REDE";
+const char* password = "SENHA_DA_SUA_REDE";
+
+WebServer server(80);
 
 // ==========================================
 // MAPEAMENTO DE HARDWARE (ESP32-S3)
@@ -10,8 +20,11 @@
 #define DHTTYPE       DHT11   // Modelo do sensor (DHT11 ou DHT22)
 #define LDR_PIN       4       // Leitura analógica de luminosidade (ADC1)
 #define POT_PIN       5       // Leitura analógica de umidade do solo (ADC1)
-#define LED_IRRIGACAO 6       // Sinal de acionamento do sistema de rega
+
+#define LED_IRRIGACAO 6       // Pino da Bomba de Irrigação
 #define BUZZER_PIN    7       // Sinal de acionamento do alarme sonoro
+#define COOLER_PIN    10      // Pino do Cooler/Exaustão
+#define LUZ_PIN       11      // Pino da Iluminação Grow Light
 
 // Configuração dos barramentos de comunicação
 #define I2C_SDA       8       // Linha de dados I2C do display
@@ -25,67 +38,151 @@
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 DHT dht(DHTPIN, DHTTYPE);
 
+// Variáveis globais
+float temperatura = 0.0;
+float umidade = 0.0;
+int leituraLDR = 0;
+int leituraSolo = 0;
+int pctSolo = 0;
+int pctLuz = 0;
+
+bool bombaManual = false;
+bool coolerManual = false;
+bool luzManual = false;
+
+// Configuração do CORS para permitir requisições de páginas web externas
+void setCORS() {
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+// Endpoint JSON para enviar TODOS os dados do ESP32 para o site
+void handleData() {
+  setCORS();
+  String json = "{";
+  json += "\"temp\":" + String(temperatura) + ",";
+  json += "\"umidade\":" + String(umidade) + ",";
+  json += "\"luz\":" + String(pctLuz) + ",";
+  json += "\"soloPct\":" + String(pctSolo) + ",";
+  json += "\"bombaState\":" + String(digitalRead(LED_IRRIGACAO) == HIGH ? "true" : "false") + ",";
+  json += "\"coolerState\":" + String(digitalRead(COOLER_PIN) == HIGH ? "true" : "false") + ",";
+  json += "\"luzState\":" + String(digitalRead(LUZ_PIN) == HIGH ? "true" : "false");
+  json += "}";
+  
+  server.send(200, "application/json", json);
+}
+
+// Endpoint para controle individual de cada atuador
+void handleToggle() {
+  setCORS();
+  if (server.hasArg("type") && server.hasArg("state")) {
+    String type = server.arg("type");
+    bool state = server.arg("state") == "1";
+
+    if (type == "bomba") {
+      bombaManual = state;
+      digitalWrite(LED_IRRIGACAO, state ? HIGH : LOW);
+    } else if (type == "cooler") {
+      coolerManual = state;
+      digitalWrite(COOLER_PIN, state ? HIGH : LOW);
+    } else if (type == "luz") {
+      luzManual = state;
+      digitalWrite(LUZ_PIN, state ? HIGH : LOW);
+    }
+  }
+  server.send(200, "text/plain", "OK");
+}
+
 void setup() {
   Serial.begin(115200);
-  Serial.println("\n--- Sistema de Monitoramento de Estufa ESP32-S3 ---");
 
-  // Configura os atuadores como saídas e garante estado desligado
   pinMode(LED_IRRIGACAO, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(COOLER_PIN, OUTPUT);
+  pinMode(LUZ_PIN, OUTPUT);
+
   digitalWrite(LED_IRRIGACAO, LOW);
   digitalWrite(BUZZER_PIN, LOW);
+  digitalWrite(COOLER_PIN, LOW);
+  digitalWrite(LUZ_PIN, LOW);
 
-  // Inicializa o protocolo I2C com os pinos redefinidos
   Wire.begin(I2C_SDA, I2C_SCL);
 
-  // Prepara a tela LCD e exibe mensagem de boot
   lcd.init();
   lcd.backlight();
   lcd.setCursor(0, 0);
-  lcd.print("Estufa ESP32-S3");
-  lcd.setCursor(0, 1);
-  lcd.print("Iniciando...");
+  lcd.print("Conectando WiFi");
 
-  // Ativa a coleta do sensor de umidade/temperatura
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nWi-Fi Conectado!");
+  Serial.print("Endereço IP do ESP32: ");
+  Serial.println(WiFi.localIP());
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("IP da Estufa:");
+  lcd.setCursor(0, 1);
+  lcd.print(WiFi.localIP());
+
   dht.begin();
-  delay(2000);
+
+  server.on("/data", handleData);
+  server.on("/toggle", handleToggle);
+  
+  server.onNotFound([]() {
+    if (server.method() == HTTP_OPTIONS) {
+      setCORS();
+      server.send(204);
+    } else {
+      server.send(404, "text/plain", "Not Found");
+    }
+  });
+
+  server.begin();
+  delay(3000);
   lcd.clear();
 }
 
 void loop() {
-  // Captura dos dados dos sensores
-  float temperatura = dht.readTemperature();
-  float umidade = dht.readHumidity();
-  int leituraLDR = analogRead(LDR_PIN);
-  int leituraSolo = analogRead(POT_PIN);
+  server.handleClient();
 
-  // Validação das leituras do DHT
+  // Leitura dos sensores
+  temperatura = dht.readTemperature();
+  umidade = dht.readHumidity();
+  leituraLDR = analogRead(LDR_PIN);
+  leituraSolo = analogRead(POT_PIN);
+
   if (isnan(temperatura) || isnan(umidade)) {
-    Serial.println("Falha na comunicação com o sensor DHT!");
-    lcd.setCursor(0, 0);
-    lcd.print("Erro no DHT!    ");
-    delay(2000);
-    return;
+    temperatura = 0.0;
+    umidade = 0.0;
   }
 
-  // Converte a leitura do solo para porcentagem (0 a 100%)
-  int pctSolo = map(leituraSolo, 0, 4095, 0, 100);
+  pctSolo = map(leituraSolo, 0, 4095, 0, 100);
+  pctLuz = map(leituraLDR, 0, 4095, 0, 100);
 
-  // Regra de acionamento da irrigação
-  if (leituraSolo < SOLO_CRITICO) {
-    digitalWrite(LED_IRRIGACAO, HIGH); // Ativa bomba/solenoide
-  } else {
-    digitalWrite(LED_IRRIGACAO, LOW);  // Desativa irrigação
+  // Automação da bomba de irrigação (se não estiver sob controle manual)
+  if (!bombaManual) {
+    if (leituraSolo < SOLO_CRITICO) {
+      digitalWrite(LED_IRRIGACAO, HIGH);
+    } else {
+      digitalWrite(LED_IRRIGACAO, LOW);
+    }
   }
 
-  // Regra de acionamento do alarme de superaquecimento
+  // Automação de alarme sonoro
   if (temperatura > TEMP_LIMITE_ALTA) {
-    digitalWrite(BUZZER_PIN, HIGH);   // Dispara o alerta sonoro
+    digitalWrite(BUZZER_PIN, HIGH);
   } else {
-    digitalWrite(BUZZER_PIN, LOW);    // Mantém em silêncio
+    digitalWrite(BUZZER_PIN, LOW);
   }
 
-  // Atualiza as informações da Linha 1 no LCD (Temperatura e Umidade)
+  // Atualização LCD
   lcd.setCursor(0, 0);
   lcd.print("T:");
   lcd.print(temperatura, 1);
@@ -94,18 +191,10 @@ void loop() {
   lcd.print(umidade, 0);
   lcd.print("%   ");
 
-  // Atualiza as informações da Linha 2 no LCD (Umidade do Solo e Luz)
   lcd.setCursor(0, 1);
   lcd.print("Solo:");
   lcd.print(pctSolo);
   lcd.print("% L:");
-  lcd.print(map(leituraLDR, 0, 4095, 0, 100));
+  lcd.print(pctLuz);
   lcd.print("%   ");
-
-  // Transmita as leituras formatadas via porta Serial
-  Serial.printf("Temp: %.1f°C | Umid: %.1f%% | Solo: %d%% | Luz ADC: %d\n",
-                temperatura, umidade, pctSolo, leituraLDR);
-
-  // Intervalo entre cada amostragem
-  delay(2000);
 }
