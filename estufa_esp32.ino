@@ -8,16 +8,16 @@
 // ==========================================
 // CONFIGURAÇÕES DE REDE (WI-FI)
 // ==========================================
-const char* ssid = "NOME_DA_SUA_REDE";
-const char* password = "SENHA_DA_SUA_REDE";
+const char* ssid = "NOME_DA_SUA_REDE";      // Cole o nome da sua rede Wi-Fi aqui
+const char* password = "SENHA_DA_SUA_REDE";  // Cole a senha da sua rede Wi-Fi aqui
 
 WebServer server(80);
 
 // ==========================================
 // MAPEAMENTO DE HARDWARE (ESP32-S3)
 // ==========================================
-#define DHTPIN        15      // Entrada de dados do sensor de clima
-#define DHTTYPE       DHT11   // Modelo do sensor (DHT11 ou DHT22)
+#define DHTPIN        15      // Entrada de dados do sensor DHT
+#define DHTTYPE       DHT11   // Modelo do sensor (DHT11)
 #define LDR_PIN       4       // Leitura analógica de luminosidade (ADC1)
 #define POT_PIN       5       // Leitura analógica de umidade do solo (ADC1)
 
@@ -26,15 +26,14 @@ WebServer server(80);
 #define COOLER_PIN    10      // Pino do Cooler/Exaustão
 #define LUZ_PIN       11      // Pino da Iluminação Grow Light
 
-// Configuração dos barramentos de comunicação
-#define I2C_SDA       8       // Linha de dados I2C do display
-#define I2C_SCL       9       // Linha de clock I2C do display
+// Configuração I2C do Display LCD
+#define I2C_SDA       8       
+#define I2C_SCL       9       
 
-// Limites operacionais para automação
-#define TEMP_LIMITE_ALTA 30.0 // Gatilho de temperatura crítica em °C
-#define SOLO_CRITICO     300  // Limiar mínimo de umidade do solo (valor ADC)
+// Limites operacionais
+#define TEMP_LIMITE_ALTA 30.0 
+#define SOLO_CRITICO     300  
 
-// Instanciamento dos periféricos
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 DHT dht(DHTPIN, DHTTYPE);
 
@@ -50,14 +49,14 @@ bool bombaManual = false;
 bool coolerManual = false;
 bool luzManual = false;
 
-// Configuração do CORS para permitir requisições de páginas web externas
+// Função para liberar acesso CORS do navegador
 void setCORS() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
-// Endpoint JSON para enviar TODOS os dados do ESP32 para o site
+// Rota /data -> Envia todas as leituras em JSON
 void handleData() {
   setCORS();
   String json = "{";
@@ -73,7 +72,7 @@ void handleData() {
   server.send(200, "application/json", json);
 }
 
-// Endpoint para controle individual de cada atuador
+// Rota /toggle -> Recebe comandos de liga/desliga do site
 void handleToggle() {
   setCORS();
   if (server.hasArg("type") && server.hasArg("state")) {
@@ -135,6 +134,7 @@ void setup() {
   server.on("/data", handleData);
   server.on("/toggle", handleToggle);
   
+  // Trata requisições OPTIONS do navegador (pré-voo do CORS)
   server.onNotFound([]() {
     if (server.method() == HTTP_OPTIONS) {
       setCORS();
@@ -152,7 +152,7 @@ void setup() {
 void loop() {
   server.handleClient();
 
-  // Leitura dos sensores
+  // Leitura contínua dos sensores
   temperatura = dht.readTemperature();
   umidade = dht.readHumidity();
   leituraLDR = analogRead(LDR_PIN);
@@ -166,23 +166,18 @@ void loop() {
   pctSolo = map(leituraSolo, 0, 4095, 0, 100);
   pctLuz = map(leituraLDR, 0, 4095, 0, 100);
 
-  // Automação da bomba de irrigação (se não estiver sob controle manual)
+  // Lógica de acionamento automático
   if (!bombaManual) {
-    if (leituraSolo < SOLO_CRITICO) {
-      digitalWrite(LED_IRRIGACAO, HIGH);
-    } else {
-      digitalWrite(LED_IRRIGACAO, LOW);
-    }
+    digitalWrite(LED_IRRIGACAO, (leituraSolo < SOLO_CRITICO) ? HIGH : LOW);
   }
 
-  // Automação de alarme sonoro
   if (temperatura > TEMP_LIMITE_ALTA) {
     digitalWrite(BUZZER_PIN, HIGH);
   } else {
     digitalWrite(BUZZER_PIN, LOW);
   }
 
-  // Atualização LCD
+  // Atualização do LCD
   lcd.setCursor(0, 0);
   lcd.print("T:");
   lcd.print(temperatura, 1);
