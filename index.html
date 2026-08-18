@@ -213,7 +213,7 @@
     </main>
 
     <script>
-        // ATENÇÃO: COLOQUE O IP DO SEU ESP32 AQUI (COM HTTP://)
+        // ⚠️ ALTERE APENAS A LINHA ABAIXO COM O SEU IP OBTIDO NO MONITOR SERIAL DA ARDUINO IDE
         const ESP32_IP = "http://192.168.1.15"; 
 
         document.getElementById('themeToggle').addEventListener('click', () => {
@@ -234,19 +234,21 @@
         });
 
         function fetchESP32Data() {
-            fetch(`${ESP32_IP}/data`)
+            const cleanURL = ESP32_IP.trim();
+
+            fetch(`${cleanURL}/data`)
                 .then(response => {
                     if (!response.ok) throw new Error("Falha na resposta do servidor");
                     return response.json();
                 })
                 .then(data => {
-                    // Atualiza Conexão
+                    // Status de Conexão
                     document.getElementById('statusText').innerText = "ESP32 Online";
                     document.getElementById('pingDot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-ping";
 
-                    // Atualiza HTML
-                    document.getElementById('tempValue').innerHTML = `${data.temp.toFixed(1)} <span class="text-lg font-normal text-slate-500">°C</span>`;
-                    document.getElementById('humidityValue').innerHTML = `${data.umidade.toFixed(0)} <span class="text-lg font-normal text-slate-500">%</span>`;
+                    // Valores dos Sensores
+                    document.getElementById('tempValue').innerHTML = `${Number(data.temp).toFixed(1)} <span class="text-lg font-normal text-slate-500">°C</span>`;
+                    document.getElementById('humidityValue').innerHTML = `${Number(data.umidade).toFixed(0)} <span class="text-lg font-normal text-slate-500">%</span>`;
                     document.getElementById('luxValue').innerHTML = `${data.luz} <span class="text-lg font-normal text-slate-500">%</span>`;
                     document.getElementById('soilValue').innerHTML = `${data.soloPct} <span class="text-lg font-normal text-slate-500">%</span>`;
                     document.getElementById('soilBar').style.width = `${data.soloPct}%`;
@@ -270,7 +272,7 @@
                     const now = new Date();
                     document.getElementById('lastUpdate').innerText = now.toLocaleTimeString('pt-BR');
 
-                    // Gráfico
+                    // Gráfico de linha
                     if (chart.data.labels.length > 8) {
                         chart.data.labels.shift();
                         chart.data.datasets[0].data.shift();
@@ -282,15 +284,18 @@
                     chart.update();
                 })
                 .catch(err => {
+                    console.error("Erro no Fetch:", err);
                     document.getElementById('statusText').innerText = "ESP32 Desconectado";
                     document.getElementById('pingDot').className = "w-2 h-2 rounded-full bg-red-500";
                 });
         }
 
         function toggleActuator(type, state) {
-            fetch(`${ESP32_IP}/toggle?type=${type}&state=${state ? 1 : 0}`);
+            const cleanURL = ESP32_IP.trim();
+            fetch(`${cleanURL}/toggle?type=${type}&state=${state ? 1 : 0}`);
         }
 
+        // Executa a cada 2 segundos
         setInterval(fetchESP32Data, 2000);
         fetchESP32Data();
     </script>
