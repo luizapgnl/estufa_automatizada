@@ -64,5 +64,6 @@ Para superar os requisitos mínimos do projeto, a equipe implementou dois recurs
 
 ## 👥 Integrantes da Equipe
 * **[Ana Luiza]** - *Montagem do Circuito e Hardware*
+* **[Almir ]** - *Montagem do Circuito e Hardware*
 * **[Nali ]** - *Desenvolvimento do Código C++ (ESP32)*
-* **[Alice ]** - *Integração IoT e Frontend / Dashboard*
+* **[Hellvig ]** - *Integração IoT e Frontend / Dashboard*
